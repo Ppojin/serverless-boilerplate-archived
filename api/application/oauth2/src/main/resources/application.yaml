@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: serverless-hello
+  cloud:
+    function:
+      definition: apiGatewayEventHandler
+  http:
+    client:
+      factory: jdk
+
+cognito:
+  client:
+    url: ${COGNITO_CLIENT_URL}
+    id: ${COGNITO_CLIENT_ID}
+    secret: ${COGNITO_CLIENT_SECRET}
+  issuer:
+    uri: ${COGNITO_ISSUER_URI}

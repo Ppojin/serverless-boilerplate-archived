@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Application Model template describing your function.
+
+Parameters:
+  CognitoClientUrl:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]{26}$
+  CognitoClientId:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]{26}$
+  CognitoClientSecret:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]{52}$
+  # LambdaMainClass:
+  #   Type: String
+  #   AllowedPattern: ^[a-zA-Z0-9_.]+$
+  # LambdaFunctionName:
+  #   Type: String
+  #   AllowedPattern: ^[a-zA-Z0-9_.-]+$
+
+Globals:
+  Api:
+    EndpointConfiguration: REGIONAL
+  Function:
+    AutoPublishAlias: live
+    Handler: org.springframework.cloud.function.adapter.aws.FunctionInvoker::handleRequest
+    Architectures:
+      - arm64
+    EphemeralStorage:
+      Size: 512
+    MemorySize: 256
+    Timeout: 15
+    Runtime: java21
+    RecursiveLoop: Terminate
+    Layers:
+      - !Ref DependencyLayer
+    RuntimeManagementConfig:
+      UpdateRuntimeOn: Auto
+    Environment:
+      Variables:
+        COGNITO_CLIENT_URL: !Ref CognitoClientUrl
+        COGNITO_CLIENT_ID: !Ref CognitoClientId
+        COGNITO_CLIENT_SECRET: !Ref CognitoClientSecret
+    EventInvokeConfig:
+      MaximumEventAgeInSeconds: 60
+      MaximumRetryAttempts: 0
+      DestinationConfig: { }
+    SnapStart:
+      ApplyOn: PublishedVersions
+
+Resources:
+
+  DependencyLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: api/application/core/build/libs.zip
+      LayerName: dependencies
+      CompatibleArchitectures:
+        - arm64
+      CompatibleRuntimes:
+        - java21
+
+  testLambda:
+    Type: AWS::Serverless::Function
+    dependsOn:
+      - DependencyLayer
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      AutoPublishAliasAllProperties: true
+      CodeUri: ./api
+      PackageType: Zip
+      Environment:
+        Variables:
+          MAIN_CLASS: com.ppojin.serverless.ServerlessOauth2Application
+          FUNCTION_NAME: apiGatewayEventHandler
+      Events:
+        Oauth2:
+          Type: Api
+          Properties:
+            Path: /oauth2
+            Method: GET
+            RestApiId: !Ref testApi
+            Auth:
+              Authorizer: NONE
+        test:
+          Type: Api
+          Properties:
+            Path: /test
+            Method: GET
+            RestApiId: !Ref testApi
+            Auth:
+              Authorizer: NONE
+
+  testApi:
+    Type: AWS::Serverless::Api
+    dependsOn:
+      - testLambda
+    Properties:
+      Cors:
+        MaxAge: 5
+#      Auth:
+#        Authorizers:
+#          cognito:
+#            UserPoolArn: !GetAtt testCognito.Arn
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: { }
+        paths:
+          /test:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${testLambda.Arn}:live/invocations
+              responses: { }
+          /oauth2:
+            get:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${testLambda.Arn}:live/invocations
+              responses: { }
+      TracingEnabled: false
+
+#  ApiDomainName:
+#    Type: AWS::ApiGatewayV2::DomainName
+#    Properties:
+#      DomainName: www.###.com
+#      DomainNameConfigurations:
+#        - EndpointType: REGIONAL
+#          CertificateArn: !Ref ${ApiDomainNameCert.Arn}
+#
+#  ApiDomainNameCert:
+#    Type: AWS::CertificateManager::Certificate
+#    Properties:
+#      CertificateTransparencyLoggingPreference: ENABLED
+#      DomainName: ###.com
+#      KeyAlgorithm: String
+#      SubjectAlternativeNames:
+#        - www.###.com
+#      ValidationMethod: DNS
+
+#  ManagedLoginBranding:
+#    Type: AWS::Cognito::ManagedLoginBranding
+#    Properties:
+#      ClientId: !Ref UserPoolClient
+#      UserPoolId: !Ref UserPool
