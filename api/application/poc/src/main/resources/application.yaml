@@ -1,0 +1,8 @@
+
+
+spring:
+#  main:
+#    web-application-type: servlet
+  cloud:
+    function:
+      definition: pocRouter

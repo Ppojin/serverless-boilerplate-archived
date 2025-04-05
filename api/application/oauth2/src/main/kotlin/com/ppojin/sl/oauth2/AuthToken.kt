@@ -1,4 +1,4 @@
-package com.ppojin.serverless.oauth2
+package com.ppojin.sl.oauth2
 
 class AuthToken (
     val id_token: String,

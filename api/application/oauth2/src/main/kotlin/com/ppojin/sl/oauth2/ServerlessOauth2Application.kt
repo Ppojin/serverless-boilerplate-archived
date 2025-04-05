@@ -1,4 +1,4 @@
-package com.ppojin.serverless
+package com.ppojin.sl.oauth2
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

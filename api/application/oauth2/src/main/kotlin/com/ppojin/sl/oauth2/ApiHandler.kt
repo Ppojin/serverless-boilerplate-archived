@@ -1,4 +1,4 @@
-package com.ppojin.serverless.oauth2
+package com.ppojin.sl.oauth2
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
@@ -8,7 +8,6 @@ import org.springframework.http.MediaType
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.client.RestClient
 import java.util.*
 
@@ -33,7 +32,6 @@ class ApiHandler(
     }
 
     @Bean
-    @GetMapping
     fun apiGatewayEventHandler(): (APIGatewayProxyRequestEvent) -> APIGatewayProxyResponseEvent = {
         when (it.path) {
             "/oauth2" -> oauth2(it)
